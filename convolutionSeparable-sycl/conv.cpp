@@ -41,9 +41,9 @@ void convolutionRows(
     range<2> gws (imageH, imageW / ROWS_RESULT_STEPS);
 
     q.submit([&] (handler &cgh) {
-      auto dst = d_Dst.get_access<sycl_discard_write>(cgh);
-      auto src = d_Src.get_access<sycl_read>(cgh);
-      auto kernel = d_Kernel.get_access<sycl_read>(cgh);
+      accessor dst{d_Dst, cgh, write_only, ext::oneapi::accessor_property_list{no_init, ext::oneapi::no_alias}};
+      accessor src{d_Src, cgh, read_only, ext::oneapi::accessor_property_list{ext::oneapi::no_alias}};
+      accessor kernel{d_Kernel, cgh, read_only, ext::oneapi::accessor_property_list{ext::oneapi::no_alias}};
       accessor<float, 2, sycl_read_write, access::target::local> 
         l_Data({ROWS_BLOCKDIM_Y, (ROWS_RESULT_STEPS + 2 * ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X}, cgh);
 
@@ -77,7 +77,7 @@ void convolutionRows(
             float sum = 0;
 
             for(int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)
-                sum += kernel[KERNEL_RADIUS - j] * l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X + j];
+               sum += kernel[KERNEL_RADIUS - j] * l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X + j];
 
             dst_new[i * ROWS_BLOCKDIM_X] = sum;
         }
@@ -103,9 +103,9 @@ void convolutionColumns(
     range<2> gws (imageH / COLUMNS_RESULT_STEPS, imageW);
 
     q.submit([&] (handler &cgh) {
-      auto dst = d_Dst.get_access<sycl_discard_write>(cgh);
-      auto src = d_Src.get_access<sycl_read>(cgh);
-      auto kernel = d_Kernel.get_access<sycl_read>(cgh);
+      accessor dst{d_Dst, cgh, write_only, ext::oneapi::accessor_property_list{no_init, ext::oneapi::no_alias}};
+      accessor src{d_Src, cgh, read_only, ext::oneapi::accessor_property_list{ext::oneapi::no_alias}};
+      accessor kernel{d_Kernel, cgh, read_only, ext::oneapi::accessor_property_list{ext::oneapi::no_alias}};
       accessor<float, 2, sycl_read_write, access::target::local> 
         l_Data({COLUMNS_BLOCKDIM_X, (COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1}, cgh);
 
