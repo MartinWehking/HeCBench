@@ -14,6 +14,9 @@
 #include "common.h"
 #include "conv.h"
 
+#define KERNEL_RADIUS 8
+#define KERNEL_LENGTH (2 * KERNEL_RADIUS + 1)
+
 #define ROWS_BLOCKDIM_X 16
 #define COLUMNS_BLOCKDIM_X 16
 #define ROWS_BLOCKDIM_Y 4
@@ -22,66 +25,135 @@
 #define COLUMNS_RESULT_STEPS 8
 #define ROWS_HALO_STEPS 1
 #define COLUMNS_HALO_STEPS 1
+using namespace sycl;
+
+static void conv_r(
+    nd_item<2> item, const float *__restrict__ d_Src_new,
+    float *__restrict__ d_Dst_new,
+    accessor<float, 2, access_mode::read_write, access::target::local> l_Data,
+    const float *__restrict__ d_Kernel, const int imageW, const int imageH,
+    const int pitch) {
+  int gidX = item.get_group(1);
+  int gidY = item.get_group(0);
+  int lidX = item.get_local_id(1);
+  int lidY = item.get_local_id(0);
+
+  // Offset to the left halo edge
+  const int baseX =
+      (gidX * ROWS_RESULT_STEPS - ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X + lidX;
+  const int baseY = gidY * ROWS_BLOCKDIM_Y + lidY;
+
+  // Load main data
+  for (int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++) {
+    l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X] = d_Src_new[i * ROWS_BLOCKDIM_X];
+  }
+
+  // Load left halo
+  for (int i = 0; i < ROWS_HALO_STEPS; i++)
+    l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X] =
+        (baseX + i * ROWS_BLOCKDIM_X >= 0) ? d_Src_new[i * ROWS_BLOCKDIM_X] : 0;
+
+  // Load right halo
+  for (int i = ROWS_HALO_STEPS + ROWS_RESULT_STEPS;
+       i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS + ROWS_HALO_STEPS; i++)
+    l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X] =
+        (baseX + i * ROWS_BLOCKDIM_X < imageW) ? d_Src_new[i * ROWS_BLOCKDIM_X]
+                                               : 0;
+
+  // Compute and store results
+  item.barrier(access::fence_space::local_space);
+  for (int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++) {
+    float sum = 0;
+
+    for (int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)
+      sum += d_Kernel[KERNEL_RADIUS - j] *
+             l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X + j];
+
+    d_Dst_new[i * ROWS_BLOCKDIM_X] = sum;
+  }
+}
 
 void convolutionRows(
     queue &q,
     float *__restrict__ d_Dst,          // buffer<float,1> &d_Dst,
     const float *__restrict__ d_Src,    // buffer<float,1> &d_Src,
     const float *__restrict__ d_Kernel, // buffer<float,1> &d_Kernel,
-    const int imageW,
-    const int imageH,
-    const int pitch)
-{
-    assert(ROWS_BLOCKDIM_X * ROWS_HALO_STEPS >= KERNEL_RADIUS);
-    assert(imageW % (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X) == 0);
-    assert(imageH % ROWS_BLOCKDIM_Y == 0);
+    const int imageW, const int imageH, const int pitch) {
+  assert(ROWS_BLOCKDIM_X * ROWS_HALO_STEPS >= KERNEL_RADIUS);
+  assert(imageW % (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X) == 0);
+  assert(imageH % ROWS_BLOCKDIM_Y == 0);
 
-    range<2> lws(ROWS_BLOCKDIM_Y, ROWS_BLOCKDIM_X);
-    range<2> gws(imageH, imageW / ROWS_RESULT_STEPS);
+  range<2> lws(ROWS_BLOCKDIM_Y, ROWS_BLOCKDIM_X);
+  range<2> gws(imageH, imageW / ROWS_RESULT_STEPS);
 
-    q.submit([&](handler &cgh)
-             {
-      accessor<float, 2, sycl_read_write, access::target::local> 
-      l_Data({ROWS_BLOCKDIM_Y, (ROWS_RESULT_STEPS + 2 * ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X}, cgh);
+  q.submit([&](handler &cgh) {
+    accessor<float, 2, access_mode::read_write, access::target::local> l_Data(
+        {ROWS_BLOCKDIM_Y,
+         (ROWS_RESULT_STEPS + 2 * ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X},
+        cgh);
 
-    cgh.parallel_for<class conv_rows>(nd_range<2>(gws,lws), [=] (nd_item<2> item) {
+    cgh.parallel_for<class conv_rows>(
+        nd_range<2>(gws, lws), [=](nd_item<2> item) {
+          int gidX = item.get_group(1);
+          int gidY = item.get_group(0);
+          int lidX = item.get_local_id(1);
+          int lidY = item.get_local_id(0);
+
+          // Offset to the left halo edge
+          const int baseX =
+              (gidX * ROWS_RESULT_STEPS - ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X +
+              lidX;
+          const int baseY = gidY * ROWS_BLOCKDIM_Y + lidY;
+
+          const float *__restrict__ d_Src_new = d_Src + baseY * pitch + baseX;
+          float *__restrict__ d_Dst_new = d_Dst + baseY * pitch + baseX;
+          conv_r(item, d_Src_new, d_Dst_new, l_Data, d_Kernel, imageW, imageH,
+                  pitch);
+        });
+  });
+}
+
+
+static void conv_c(
+    nd_item<2> item, const float *__restrict__ d_Src_new,
+    float *__restrict__ d_Dst_new,
+    accessor<float, 2, access_mode::read_write, access::target::local> l_Data,
+    const float *__restrict__ d_Kernel, const int imageW, const int imageH,
+    const int pitch) {
         int gidX = item.get_group(1); 
         int gidY = item.get_group(0); 
         int lidX = item.get_local_id(1); 
         int lidY = item.get_local_id(0); 
 
-        //Offset to the left halo edge
-        const int baseX = (gidX * ROWS_RESULT_STEPS - ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X + lidX;
-        const int baseY = gidY * ROWS_BLOCKDIM_Y + lidY;
+        //Offset to the upper halo edge
+        const int baseX = gidX * COLUMNS_BLOCKDIM_X + lidX;
+        const int baseY = (gidY * COLUMNS_RESULT_STEPS - COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + lidY;
 
-        const float* __restrict__ d_Src_new = d_Src + baseY * pitch + baseX;
-        float* __restrict__ d_Dst_new = d_Dst + baseY * pitch + baseX;
-        
         //Load main data
-        for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++) {
-            l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X] = d_Src_new[i * ROWS_BLOCKDIM_X];
-        }
+        for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++)
+            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y] = d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch];
 
-        //Load left halo
-        for(int i = 0; i < ROWS_HALO_STEPS; i++)
-            l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X]  = (baseX + i * ROWS_BLOCKDIM_X >= 0) ? d_Src_new[i * ROWS_BLOCKDIM_X] : 0;
+        //Load upper halo
+        for(int i = 0; i < COLUMNS_HALO_STEPS; i++)
+            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y] = (baseY + i * COLUMNS_BLOCKDIM_Y >= 0) ? d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch] : 0;
 
-        //Load right halo
-        for(int i = ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS + ROWS_HALO_STEPS; i++)
-            l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X]  = (baseX + i * ROWS_BLOCKDIM_X < imageW) ? d_Src_new[i * ROWS_BLOCKDIM_X] : 0;
+        //Load lower halo
+        for(int i = COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS + COLUMNS_HALO_STEPS; i++)
+            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y]  = (baseY + i * COLUMNS_BLOCKDIM_Y < imageH) ? d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch] : 0;
 
         //Compute and store results
         item.barrier(access::fence_space::local_space);
-        for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++){
+        for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++){
             float sum = 0;
 
             for(int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)
-                sum += d_Kernel[KERNEL_RADIUS - j] * l_Data[lidY][lidX + i * ROWS_BLOCKDIM_X + j];
+                sum += d_Kernel[KERNEL_RADIUS - j] * l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y + j];
 
-            d_Dst_new[i * ROWS_BLOCKDIM_X] = sum;
+            d_Dst_new[i * COLUMNS_BLOCKDIM_Y * pitch] = sum;
         }
-      }); });
+
 }
+
 
 void convolutionColumns(
     queue &q,
@@ -118,27 +190,7 @@ void convolutionColumns(
         const float *__restrict__ d_Src_new = d_Src + baseY * pitch + baseX;
         float *__restrict__ d_Dst_new = d_Dst + baseY * pitch + baseX;
 
-        //Load main data
-        for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++)
-            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y] = d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch];
-
-        //Load upper halo
-        for(int i = 0; i < COLUMNS_HALO_STEPS; i++)
-            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y] = (baseY + i * COLUMNS_BLOCKDIM_Y >= 0) ? d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch] : 0;
-
-        //Load lower halo
-        for(int i = COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS + COLUMNS_HALO_STEPS; i++)
-            l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y]  = (baseY + i * COLUMNS_BLOCKDIM_Y < imageH) ? d_Src_new[i * COLUMNS_BLOCKDIM_Y * pitch] : 0;
-
-        //Compute and store results
-        item.barrier(access::fence_space::local_space);
-        for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++){
-            float sum = 0;
-
-            for(int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)
-                sum += d_Kernel[KERNEL_RADIUS - j] * l_Data[lidX][lidY + i * COLUMNS_BLOCKDIM_Y + j];
-
-            d_Dst_new[i * COLUMNS_BLOCKDIM_Y * pitch] = sum;
-        }
+        conv_c(item, d_Src_new, d_Dst_new, l_Data, d_Kernel, imageW, imageH,
+                  pitch);
       }); });
 }
