@@ -78,7 +78,7 @@
     "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(s\\))"
   ],
   "bezier-surface-sycl": [
-    "(?:device execution time: )([0-9.+-e]+)(?: ms)",
+    "(?:kernel execution time: )([0-9.+-e]+)(?: ms)",
     [
       "-m",
       "10",
@@ -87,7 +87,7 @@
     ]
   ],
   "bilateral-sycl": [
-    "(?:Average kernel execution time \\([1-9]x[1-9]\\) )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time \\([1-9]x[1-9]\\) )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "1000",
       "1000",
@@ -100,14 +100,17 @@
     "(?:Total binomialOptionsGPU\\(\\) time: )([0-9.+-e]+)(?: msec)"
   ],
   "bitonic-sort-sycl": [
-    "(?:Parallel bitonic time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Total kernel execution time: )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "22",
       "1"
     ]
   ],
   "bonds-sycl": [
-    "(?:Processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))"
+    "(?:Average processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))",
+    [
+      "10"
+    ]
   ],
   "bsearch-sycl": [
     "(?:Average device execution time \\(bs[1-9]\\) )([0-9.+-e]+)(?: \\(s\\))",
@@ -206,7 +209,7 @@
     ]
   ],
   "epistasis-sycl": [
-    "(?:Total offloading time: )([0-9.+-e]+)(?: sec)",
+    "(?:Average kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
     [
       "100",
       "3000",
@@ -293,7 +296,7 @@
     ]
   ],
   "mr-sycl": [
-    "(?:Total kernel execution time \\([a-z]+\\) )([0-9.+-e]+)(?: \\(ms\\))"
+    "(?:Total kernel execution time \\([a-z0-9_]+[\\W]*\\): )([0-9.+-e]+)(?: \\(ms\\))"
   ],
   "murmurhash3-sycl": [
     "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(s\\))",
@@ -397,16 +400,17 @@
     ]
   ],
   "bn-sycl": [
-    "(?:Kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average execution time of genScoreKernel: )([0-9.+-e]+)(?: \\(s\\))",
     [
-      "/dev/null"
+      "result",
+      "10"
     ]
   ],
   "sheath-sycl": [
     "(?:Time per time step: )([0-9.+-e]+)(?: \\(ms\\))"
   ],
   "ace-sycl": [
-    "(?:Offload time = )([0-9.+-e]+)(?: \\(ms\\))",
+    "(?:Offload time: )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "1"
     ]
@@ -493,14 +497,13 @@
     ]
   ],
   "bezier-surface-cuda": [
-    "(?:device execution time: )([0-9.+-e]+)(?: ms)",
+    "(?:kernel execution time: )([0-9.+-e]+)(?: ms)",
     [
       "-m",
       "10",
       "-n",
       "500"
-    ],
-    "bs"
+    ]
   ],
   "bh-cuda": [
     "(?:Total kernel execution time: )([0-9.+-e]+)(?: s)",
@@ -513,20 +516,24 @@
     "(?:Total binomialOptionsGPU\\(\\) time: )([0-9.+-e]+)(?: msec)"
   ],
   "bitonic-sort-cuda": [
-    "(?:Parallel bitonic time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Total kernel execution time: )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "22",
       "1"
     ]
   ],
   "bn-cuda": [
-    "(?:Kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average execution time of genScoreKernel: )([0-9.+-e]+)(?: \\(s\\))",
     [
-      "/dev/null"
+      "result",
+      "10"
     ]
   ],
   "bonds-cuda": [
-    "(?:Processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))"
+    "(?:Average processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))",
+    [
+      "10"
+    ]
   ],
   "bsearch-cuda": [
     "(?:Average device execution time \\(bs[1-9]\\) )([0-9.+-e]+)(?: \\(s\\))",
@@ -629,7 +636,7 @@
     ]
   ],
   "epistasis-cuda": [
-    "(?:Total offloading time: )([0-9.+-e]+)(?: sec)",
+    "(?:Average kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
     [
       "100",
       "3000",
@@ -686,7 +693,7 @@
     ]
   ],
   "minimod-cuda": [
-    "(?:Time kernel: )([0-9.+-e]+)(?: s)"
+    "(?:Average kernel time per iteration: )([0-9.+-e]+)(?: s)"
   ],
   "minisweep-cuda": [
     "(?:kernel time: )([0-9.+-e]+)(?: \\(s\\))",
@@ -747,7 +754,7 @@
     ]
   ],
   "pathfinder-cuda": [
-    "(?:Device offloading time = )([0-9.+-e]+)(?:\\(s\\))",
+    "(?:Device offloading time = )([0-9.+-e]+)(?: \\(s\\))",
     [
       "1000",
       "1000",
@@ -911,7 +918,7 @@
     ]
   ],
   "bezier-surface-hip": [
-    "(?:device execution time: )([0-9.+-e]+)(?: ms)",
+    "(?:kernel execution time: )([0-9.+-e]+)(?: ms)",
     [
       "-m",
       "10",
@@ -928,7 +935,7 @@
     ]
   ],
   "bilateral-hip": [
-    "(?:Average kernel execution time \\([1-9]x[1-9]\\) )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time \\([1-9]x[1-9]\\) )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "1000",
       "1000",
@@ -941,7 +948,7 @@
     "(?:Total binomialOptionsGPU\\(\\) time: )([0-9.+-e]+)(?: msec)"
   ],
   "bitonic-sort-hip": [
-    "(?:Parallel bitonic time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Total kernel execution time: )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "22",
       "1"
@@ -950,11 +957,15 @@
   "bn-hip": [
     "(?:Kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
     [
-      "/dev/null"
+      "result",
+      "10"
     ]
   ],
   "bonds-hip": [
-    "(?:Processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))"
+    "(?:Average processing time on GPU: )([0-9.+-e]+)(?: \\(ms\\))",
+    [
+      "10"
+    ]
   ],
   "bsearch-hip": [
     "(?:Average device execution time \\(bs[1-9]\\) )([0-9.+-e]+)(?: \\(s\\))",
@@ -1056,7 +1067,7 @@
     ]
   ],
   "epistasis-hip": [
-    "(?:Total offloading time: )([0-9.+-e]+)(?: sec)",
+    "(?:Average kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
     [
       "100",
       "3000",
