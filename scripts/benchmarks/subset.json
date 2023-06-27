@@ -194,7 +194,7 @@
     ]
   ],
   "eigenvalue-sycl": [
-    "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(us\\))",
     [
       "2000",
       "200"
@@ -231,7 +231,7 @@
     ]
   ],
   "extend2-sycl": [
-    "(?:Average offload time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(us\\))",
     [
       "300"
     ]
@@ -306,7 +306,7 @@
     ]
   ],
   "nbnxm-sycl": [
-    "(?:Average kernel execution time \\(w/o shift\\): )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time \\(w/o shift\\): )([0-9.+-e]+)(?: \\(us\\))",
     [
       "100"
     ]
