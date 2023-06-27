@@ -6,4 +6,3 @@ aop-sycl
 black-scholes-sycl
 compute-score-sycl
 ecdh-sycl
-vanGenuchten-sycl
