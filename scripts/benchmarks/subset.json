@@ -410,7 +410,7 @@
     "(?:Time per time step: )([0-9.+-e]+)(?: \\(ms\\))"
   ],
   "ace-sycl": [
-    "(?:Offload time = )([0-9.+-e]+)(?: \\(ms\\))",
+    "(?:Offload time: )([0-9.+-e]+)(?: \\(ms\\))",
     [
       "1"
     ]
@@ -503,8 +503,7 @@
       "10",
       "-n",
       "500"
-    ],
-    "bs"
+    ]
   ],
   "bh-cuda": [
     "(?:Total kernel execution time: )([0-9.+-e]+)(?: s)",
@@ -524,7 +523,7 @@
     ]
   ],
   "bn-cuda": [
-    "(?:Kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average execution time of genScoreKernel: )([0-9.+-e]+)(?: \\(s\\))",
     [
       "result",
       "10"
@@ -637,7 +636,7 @@
     ]
   ],
   "epistasis-cuda": [
-    "(?:Total offloading time: )([0-9.+-e]+)(?: sec)",
+    "(?:Average kernel execution time: )([0-9.+-e]+)(?: \\(s\\))",
     [
       "100",
       "3000",
@@ -694,7 +693,7 @@
     ]
   ],
   "minimod-cuda": [
-    "(?:Time kernel: )([0-9.+-e]+)(?: s)"
+    "(?:Average kernel time per iteration: )([0-9.+-e]+)(?: s)"
   ],
   "minisweep-cuda": [
     "(?:kernel time: )([0-9.+-e]+)(?: \\(s\\))",
@@ -755,7 +754,7 @@
     ]
   ],
   "pathfinder-cuda": [
-    "(?:Device offloading time = )([0-9.+-e]+)(?:\\(s\\))",
+    "(?:Device offloading time = )([0-9.+-e]+)(?: \\(s\\))",
     [
       "1000",
       "1000",
