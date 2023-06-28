@@ -621,7 +621,7 @@
     ]
   ],
   "eigenvalue-cuda": [
-    "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average kernel execution time )([0-9.+-e]+)(?: \\(us\\))",
     [
       "2000",
       "200"
@@ -658,7 +658,7 @@
     ]
   ],
   "extend2-cuda": [
-    "(?:Average offload time )([0-9.+-e]+)(?: \\(s\\))",
+    "(?:Average offload time )([0-9.+-e]+)(?: \\(us\\))",
     [
       "300"
     ]
