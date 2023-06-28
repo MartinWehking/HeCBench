@@ -1,8 +1,8 @@
+ace-sycl
 minimod-cuda
+aop-sycl
 bn-hip
 jacobi-hip
-ace-sycl
-aop-sycl
 black-scholes-sycl
 compute-score-sycl
 ecdh-sycl
